@@ -1,0 +1,1 @@
+# Telescopes app init
