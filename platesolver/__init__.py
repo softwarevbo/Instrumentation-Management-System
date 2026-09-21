@@ -1,1 +1,0 @@
-# PlateSolver Django App
