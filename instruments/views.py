@@ -2,7 +2,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from accounts.decorators import engineer_required, admin_required
-from .models import Instrument, InstrumentSensor, TelemetryLog, FilterWheelConfig
+from .models import Instrument, InstrumentSensor, TelemetryLog
 from .forms import InstrumentForm
 
 
@@ -28,12 +28,10 @@ def instrument_detail_view(request, pk):
 
     sensors = instrument.sensors.all()
     telemetry = instrument.telemetry_logs.all()[:30]
-    filters = instrument.filter_wheel.all()
     return render(request, 'instruments/instrument_detail.html', {
         'instrument': instrument,
         'sensors': sensors,
         'telemetry': telemetry,
-        'filters': filters,
     })
 
 

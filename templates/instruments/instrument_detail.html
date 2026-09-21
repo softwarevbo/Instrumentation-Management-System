@@ -103,52 +103,27 @@
     </div>
 </div>
 
-<!-- FILTER WHEEL & TELEMETRY LOG -->
-<div class="grid grid-2">
-    <div class="card">
-        <div class="card-header"><div class="card-title"><i class="fas fa-filter"></i>Filter Wheel Configuration</div></div>
-        <div class="table-container">
-            <table>
-                <thead>
-                    <tr><th>Slot</th><th>Filter Name</th><th>λ Central</th><th>FWHM</th></tr>
-                </thead>
-                <tbody>
-                    {% for f in filters %}
-                    <tr>
-                        <td class="mono" style="color:var(--accent);">#{{ f.slot_number }}</td>
-                        <td style="font-weight:600;">{{ f.filter_name }}</td>
-                        <td class="mono">{{ f.central_wavelength }} nm</td>
-                        <td class="mono">{{ f.bandwidth }} nm</td>
-                    </tr>
-                    {% empty %}
-                    <tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:16px;">No filter wheel configured.</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <div class="card">
-        <div class="card-header"><div class="card-title"><i class="fas fa-wave-square"></i>Recent Telemetry Log</div></div>
-        <div class="table-container">
-            <table>
-                <thead>
-                    <tr><th>Timestamp</th><th>Sensor</th><th>Value</th><th>Flag</th></tr>
-                </thead>
-                <tbody>
-                    {% for log in telemetry %}
-                    <tr>
-                        <td class="mono" style="font-size:11px;">{{ log.timestamp|date:"Y-m-d H:i" }}</td>
-                        <td>{{ log.sensor_name }}</td>
-                        <td class="mono">{{ log.value }} {{ log.unit }}</td>
-                        <td><span class="badge {% if log.status_flag == 'normal' %}badge-green{% elif log.status_flag == 'warning' %}badge-yellow{% else %}badge-red{% endif %}">{{ log.get_status_flag_display }}</span></td>
-                    </tr>
-                    {% empty %}
-                    <tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:16px;">No telemetry logs recorded.</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+<!-- TELEMETRY LOG -->
+<div class="card">
+    <div class="card-header"><div class="card-title"><i class="fas fa-wave-square"></i>Recent Telemetry Log</div></div>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr><th>Timestamp</th><th>Sensor</th><th>Value</th><th>Flag</th></tr>
+            </thead>
+            <tbody>
+                {% for log in telemetry %}
+                <tr>
+                    <td class="mono" style="font-size:11px;">{{ log.timestamp|date:"Y-m-d H:i" }}</td>
+                    <td>{{ log.sensor_name }}</td>
+                    <td class="mono">{{ log.value }} {{ log.unit }}</td>
+                    <td><span class="badge {% if log.status_flag == 'normal' %}badge-green{% elif log.status_flag == 'warning' %}badge-yellow{% else %}badge-red{% endif %}">{{ log.get_status_flag_display }}</span></td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:16px;">No telemetry logs recorded.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
 </div>
 {% endblock %}

@@ -1,8 +1,13 @@
 """
-Seed Data Management Command - Vainu Bappu Observatory (VBO, Kavalur) Only
-Populates users exclusively from the VBO Kavalur technical & engineering staff directory (https://www.iiap.res.in/people/technical/#VBOKavalur),
-along with VBO telescopes (VBT 2.34m, JCBT 1.3m, CZT 1.02m), VBO instruments (VBT-HiRES, OMR, JCBT-CCD, UAGS),
-target catalog with observation dates and optical filters, science queue items, maintenance tickets, and calibration logs.
+Seed Data Management Command - Vainu Bappu Observatory (VBO, Kavalur)
+Populates exclusively the 5 requested users:
+1. Instrumentation admin (@admin) - Admin
+2. Phanindra DVS (@phanindra) - Engineer
+3. Rahul Bar (@rahulbar) - Researcher (VBT)
+4. Venkatesh S (@venkatesh) - Technical Assistant (JCBT)
+5. Surendharnath S (@surendharnath) - Researcher (VBT)
+
+Standard password for all accounts: vbo123pass
 
 Usage: python manage.py seed_data
 """
@@ -12,80 +17,56 @@ import datetime
 
 
 class Command(BaseCommand):
-    help = 'Seeds the database with authentic Vainu Bappu Observatory (VBO Kavalur) technical staff and observatory data.'
+    help = 'Seeds the database with exact 5 requested VBO technical staff users and observatory dataset.'
 
     @transaction.atomic
     def handle(self, *args, **options):
         self.stdout.write(self.style.MIGRATE_HEADING('\nIMS Observatory -- Seeding VBO Kavalur Technical Staff & Data\n'))
 
-        # ─── VBO KAVALUR TECHNICAL STAFF USERS ────────────────────────────────
+        # ─── VBO USERS (EXACTLY 5 USERS MATCHING SCREENSHOT) ─────────────────
         from accounts.models import User
 
-        # Authentic VBO Kavalur Technical Staff List
-        vbo_staff_data = [
+        STANDARD_PASSWORD = 'vbo123pass'
+
+        vbo_users_spec = [
             {
-                'username': 'anbazhagan',
-                'first_name': 'Anbazhagan',
-                'last_name': 'P',
-                'email': 'anbu@iiap.res.in',
+                'username': 'admin',
+                'first_name': 'Instrumentation',
+                'last_name': 'admin',
+                'email': 'admin@iiap.res.in',
                 'role': 'admin',
                 'department': 'operations',
-                'designation': 'Engineer E & Engineer-in-Charge (VBO Kavalur)',
+                'designation': 'Admin',
                 'is_staff': True,
                 'is_superuser': True,
                 'color': '#8b5cf6',
-                'demo_alias': 'admin',  # also update default admin
+                'telescopes': ['VBT', 'JCBT', 'CZT'],
             },
             {
-                'username': 'ramachandran',
-                'first_name': 'Ramachandran',
-                'last_name': 'A',
-                'email': 'ramachandran@iiap.res.in',
+                'username': 'phanindra',
+                'first_name': 'Phanindra',
+                'last_name': 'DVS',
+                'email': 'phanindra@iiap.res.in',
                 'role': 'engineer',
                 'department': 'electronics',
-                'designation': 'Engineer D – Telescope Control & CCD Systems',
+                'designation': 'Engineer',
                 'is_staff': False,
                 'is_superuser': False,
                 'color': '#06b6d4',
-                'demo_alias': 'engineer1',
-            },
-            {
-                'username': 'sathyanarayanan',
-                'first_name': 'Sathyanarayanan',
-                'last_name': 'S',
-                'email': 'sathya@iiap.res.in',
-                'role': 'engineer',
-                'department': 'electronics',
-                'designation': 'Technical Assistant – Servo Systems & Detector Electronics',
-                'is_staff': False,
-                'is_superuser': False,
-                'color': '#14b8a6',
-                'demo_alias': 'engineer2',
+                'telescopes': ['VBT', 'JCBT', 'CZT'],
             },
             {
                 'username': 'rahulbar',
                 'first_name': 'Rahul',
                 'last_name': 'Bar',
                 'email': 'rahul.bar@iiap.res.in',
-                'role': 'engineer',
+                'role': 'observer',
                 'department': 'software',
-                'designation': 'Lead Technical Officer – VBO Operations & Telemetry',
+                'designation': 'Researcher',
                 'is_staff': False,
                 'is_superuser': False,
                 'color': '#3b82f6',
-                'demo_alias': 'observer2',
-            },
-            {
-                'username': 'surendharnath',
-                'first_name': 'Surendharnath',
-                'last_name': 'S',
-                'email': 'surendharnath@iiap.res.in',
-                'role': 'engineer',
-                'department': 'optics',
-                'designation': 'Technical Officer – VBO Instrumentation & Alignments',
-                'is_staff': False,
-                'is_superuser': False,
-                'color': '#ec4899',
+                'telescopes': ['VBT'],
             },
             {
                 'username': 'venkatesh',
@@ -98,67 +79,51 @@ class Command(BaseCommand):
                 'is_staff': False,
                 'is_superuser': False,
                 'color': '#f59e0b',
-                'demo_alias': 'observer1',
+                'telescopes': ['JCBT'],
             },
             {
-                'username': 'naveenkumar',
-                'first_name': 'Naveen Kumar',
-                'last_name': 'R',
-                'email': 'naveenkumar@iiap.res.in',
-                'role': 'engineer',
+                'username': 'surendharnath',
+                'first_name': 'Surendharnath',
+                'last_name': 'S',
+                'email': 'surendharnath@iiap.res.in',
+                'role': 'observer',
                 'department': 'optics',
-                'designation': 'Mechanic B – Telescope & Dome Mechanical Systems',
+                'designation': 'Researcher',
                 'is_staff': False,
                 'is_superuser': False,
-                'color': '#10b981',
+                'color': '#ec4899',
+                'telescopes': ['VBT'],
             },
         ]
 
-        user_objects = {}
+        valid_usernames = [u['username'] for u in vbo_users_spec]
+        
+        # Remove any other accounts completely
+        User.objects.exclude(username__in=valid_usernames).delete()
 
-        for staff in vbo_staff_data:
-            user, created = User.objects.get_or_create(username=staff['username'])
-            user.first_name = staff['first_name']
-            user.last_name = staff['last_name']
-            user.email = staff['email']
-            user.role = staff['role']
-            user.department = staff['department']
-            user.designation = staff['designation']
-            user.is_staff = staff['is_staff']
-            user.is_superuser = staff['is_superuser']
-            user.avatar_color = staff['color']
-            user.set_password('vbo123pass')
+        user_map = {}
+
+        for spec in vbo_users_spec:
+            user, created = User.objects.get_or_create(username=spec['username'])
+            user.first_name = spec['first_name']
+            user.last_name = spec['last_name']
+            user.email = spec['email']
+            user.role = spec['role']
+            user.department = spec['department']
+            user.designation = spec['designation']
+            user.is_staff = spec['is_staff']
+            user.is_superuser = spec['is_superuser']
+            user.avatar_color = spec['color']
+            user.set_password(STANDARD_PASSWORD)
             user.save()
-            user_objects[staff['username']] = user
+            user_map[spec['username']] = (user, spec['telescopes'])
+            self.stdout.write(self.style.SUCCESS(f"  [OK] User synced: @{spec['username']} ({user.get_full_name()} - {spec['designation']})"))
 
-            # Create demo alias accounts (admin, engineer1, observer1, etc.) for convenient login
-            if 'demo_alias' in staff:
-                alias_user, _ = User.objects.get_or_create(username=staff['demo_alias'])
-                alias_user.first_name = staff['first_name']
-                alias_user.last_name = staff['last_name']
-                alias_user.email = staff['email']
-                alias_user.role = staff['role']
-                alias_user.department = staff['department']
-                alias_user.designation = f"{staff['designation']} (Demo Login)"
-                alias_user.is_staff = staff['is_staff']
-                alias_user.is_superuser = staff['is_superuser']
-                alias_user.avatar_color = staff['color']
-                if staff['demo_alias'] == 'admin':
-                    alias_user.set_password('adminpass123')
-                elif 'engineer' in staff['demo_alias']:
-                    alias_user.set_password('engineerpass123')
-                else:
-                    alias_user.set_password('observerpass123')
-                alias_user.save()
-                user_objects[staff['demo_alias']] = alias_user
-
-            self.stdout.write(self.style.SUCCESS(f"  [OK] VBO Staff user synced: {staff['username']} ({staff['designation']})"))
-
-        admin_user = user_objects.get('anbazhagan') or user_objects.get('admin')
-        engineer1 = user_objects.get('ramachandran') or user_objects.get('engineer1')
-        engineer2 = user_objects.get('sathyanarayanan') or user_objects.get('engineer2')
-        observer1 = user_objects.get('venkatesh') or user_objects.get('observer1')
-        observer2 = user_objects.get('rahulbar') or user_objects.get('observer2')
+        admin_user = user_map['admin'][0]
+        phanindra_user = user_map['phanindra'][0]
+        rahulbar_user = user_map['rahulbar'][0]
+        venkatesh_user = user_map['venkatesh'][0]
+        surendharnath_user = user_map['surendharnath'][0]
 
         # ─── VBO TELESCOPES ───────────────────────────────────────────────────
         from telescopes.models import Telescope, TelescopeLog
@@ -225,40 +190,34 @@ class Command(BaseCommand):
             }
         )
 
-        self.stdout.write(self.style.SUCCESS('  [OK] 3 VBO Telescopes registered (VBT 2.34m, JCBT 1.3m, CZT 1.02m)'))
+        tel_lookup = {'VBT': tel_vbt, 'JCBT': tel_jcbt, 'CZT': tel_czt}
 
-        # Assign authorized telescopes to Observer staff
-        venkatesh = user_objects.get('venkatesh')
-        if venkatesh:
-            venkatesh.assigned_telescopes.set([tel_vbt, tel_jcbt])
-        obs1_alias = user_objects.get('observer1')
-        if obs1_alias:
-            obs1_alias.assigned_telescopes.set([tel_vbt, tel_jcbt])
+        # Assign telescopes to users according to screenshot specification
+        for username, (u_obj, tel_codes) in user_map.items():
+            assigned = [tel_lookup[code] for code in tel_codes if code in tel_lookup]
+            u_obj.assigned_telescopes.set(assigned)
 
-        rahulbar = user_objects.get('rahulbar')
-        if rahulbar:
-            rahulbar.assigned_telescopes.set([tel_jcbt, tel_czt])
-        obs2_alias = user_objects.get('observer2')
-        if obs2_alias:
-            obs2_alias.assigned_telescopes.set([tel_jcbt, tel_czt])
+        self.stdout.write(self.style.SUCCESS('  [OK] 3 VBO Telescopes registered & assigned'))
 
         # VBO Telescope Logs
-        TelescopeLog.objects.get_or_create(
+        TelescopeLog.objects.all().delete()
+        TelescopeLog.objects.create(
             telescope=tel_vbt, event_type='slew',
-            defaults={'user': admin_user, 'message': "Anbazhagan P initiated VBT slew to Tau Bootis for high-resolution echelle spectroscopic monitoring."}
+            user=admin_user, message="Instrumentation admin initiated VBT slew to Orion Nebula for echelle spectrograph target run."
         )
-        TelescopeLog.objects.get_or_create(
+        TelescopeLog.objects.create(
             telescope=tel_vbt, event_type='dome_open',
-            defaults={'user': engineer1, 'message': "Ramachandran A verified dome shutter open status. VBT dome seeing measured at 1.4 arcsec."}
+            user=phanindra_user, message="Phanindra DVS verified dome shutter open status. VBT dome seeing measured at 1.4 arcsec."
         )
-        TelescopeLog.objects.get_or_create(
+        TelescopeLog.objects.create(
             telescope=tel_jcbt, event_type='slew',
-            defaults={'user': observer1, 'message': "Venkatesh S aligned JCBT 1.3m on Orion Nebula (M42) for 2Kx4K CCD H-alpha imaging."}
+            user=venkatesh_user, message="Venkatesh S aligned JCBT 1.3m on Orion Nebula (M42) for 2Kx4K CCD H-alpha imaging."
         )
 
         # ─── VBO INSTRUMENTS ──────────────────────────────────────────────────
         from instruments.models import Instrument, InstrumentSensor, FilterWheelConfig
 
+        FilterWheelConfig.objects.all().delete()
         Instrument.objects.exclude(code__in=['VBT-HiRES', 'OMR', 'JCBT-CCD', 'UAGS']).delete()
 
         inst_hires, _ = Instrument.objects.update_or_create(
@@ -335,7 +294,6 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS('  [OK] 4 VBO Instruments seeded (VBT-HiRES, OMR, JCBT-CCD, UAGS)'))
 
-        # VBO Instrument Sensors
         sensors_vbo = [
             (inst_hires, 'UKIRT 4K CCD Temp', '°C', -110.5, -120.0, -100.0),
             (inst_hires, 'Cryo Vacuum', 'e-6 mbar', 1.1, 0.1, 5.0),
@@ -343,7 +301,6 @@ class Command(BaseCommand):
             (inst_omr, 'Tek 1K CCD Temp', '°C', -102.0, -110.0, -95.0),
             (inst_omr, 'Grating Angle', 'deg', 14.32, 0.0, 45.0),
             (inst_jcbt_ccd, '2Kx4K CCD Temp', '°C', -115.0, -125.0, -105.0),
-            (inst_jcbt_ccd, 'Filter Wheel Pos', 'slot', 2.0, 1.0, 6.0),
             (inst_uags, 'CCD Temp', '°C', -95.0, -105.0, -85.0),
         ]
         for inst, name, unit, val, mn, mx in sensors_vbo:
@@ -352,119 +309,65 @@ class Command(BaseCommand):
                 defaults={'unit': unit, 'current_value': val, 'min_warning': mn, 'max_warning': mx}
             )
 
-        # VBO Filter Wheels
-        filters_hires = [
-            (1, 'Iodine Cell', 530.0, 100.0),
-            (2, 'ThAr Lamp', 500.0, 400.0),
-            (3, 'Flat Lamp', 550.0, 300.0),
-            (4, 'Clear / Open', 550.0, 0.0),
-        ]
-        for slot, name, wave, bw in filters_hires:
-            FilterWheelConfig.objects.get_or_create(instrument=inst_hires, slot_number=slot, defaults={'filter_name': name, 'central_wavelength': wave, 'bandwidth': bw})
-
-        filters_jcbt = [
-            (1, 'U (Bessel)', 365.0, 68.0),
-            (2, 'B (Bessel)', 440.0, 98.0),
-            (3, 'V (Bessel)', 550.0, 89.0),
-            (4, 'R (Bessel)', 641.0, 150.0),
-            (5, 'I (Bessel)', 798.0, 154.0),
-            (6, 'H-alpha (656.3nm)', 656.3, 5.0),
-            (7, 'OIII (500.7nm)', 500.7, 5.0),
-        ]
-        for slot, name, wave, bw in filters_jcbt:
-            FilterWheelConfig.objects.get_or_create(instrument=inst_jcbt_ccd, slot_number=slot, defaults={'filter_name': name, 'central_wavelength': wave, 'bandwidth': bw})
-
-        self.stdout.write(self.style.SUCCESS('  [OK] VBO Sensors and Filter Wheel slots configured'))
-
-        # ─── VBO TARGET CATALOG WITH DATES & FILTERS ──────────────────────────
+        # ─── SINGLE DATA FOR CATALOG ──────────────────────────────────────────
         from observations.models import ObservationTarget
 
-        targets_vbo_data = [
-            ('Andromeda Galaxy', 'M31 / NGC 224', 'galaxy', '00h 42m 44.3s', "+41° 16' 09\"", 3.44, 2537000.0, datetime.date(2026, 1, 14), 'B (440nm)', 'J2000.0'),
-            ('Orion Nebula', 'M42 / NGC 1976', 'nebula', '05h 35m 17.3s', "-05° 23' 28\"", 4.00, 1344.0, datetime.date(2026, 1, 20), 'H-alpha (656.3nm)', 'J2000.0'),
-            ('Tau Bootis', 'HD 120136', 'exoplanet', '13h 47m 15.7s', "+17° 27' 25\"", 4.50, 51.0, datetime.date(2026, 2, 5), 'Iodine Cell', 'J2000.0'),
-            ('Vega', 'HD 172167', 'star', '18h 36m 56.3s', "+38° 47' 01\"", 0.03, 25.04, datetime.date(2026, 2, 18), 'V (550nm)', 'J2000.0'),
-            ('Crab Nebula', 'M1 / NGC 1952', 'nebula', '05h 34m 31.9s', "+22° 00' 52\"", 8.40, 6523.0, datetime.date(2026, 3, 1), 'OIII (500.7nm)', 'J2000.0'),
-            ('47 Tucanae', 'NGC 104', 'star', '00h 24m 05.4s', "-72° 04' 53\"", 4.09, 16700.0, datetime.date(2026, 3, 12), 'R (641nm)', 'J2000.0'),
-            ('V404 Cygni', 'GS 2023+338', 'star', '20h 24m 03.8s', "+33° 52' 02\"", 11.80, 7800.0, datetime.date(2026, 4, 2), 'I (798nm)', 'J2000.0'),
-            ('Betelgeuse', 'Alpha Orionis', 'star', '05h 55m 10.3s', "+07° 24' 25\"", 0.50, 642.5, datetime.date(2026, 4, 15), 'V (550nm)', 'J2000.0'),
-            ('Supernova Remnant 1987A', 'SN 1987A', 'nebula', '05h 35m 28.0s', "-69° 16' 11\"", 14.20, 168000.0, datetime.date(2026, 5, 10), 'H-alpha (656.3nm)', 'J2000.0'),
-            ('Pulsar PSR B1919+21', 'CP 1919', 'quasar', '19h 21m 44.8s', "+21° 53' 02\"", 16.50, 3260.0, datetime.date(2026, 6, 1), 'ThAr Lamp', 'J2000.0'),
-        ]
+        ObservationTarget.objects.all().delete()
 
-        targets_dict = {}
-        for name, cat, cls, ra, dec, mag, dist, obs_date, filt, ep in targets_vbo_data:
-            t, _ = ObservationTarget.objects.update_or_create(
-                name=name,
-                defaults={
-                    'catalog_id': cat,
-                    'object_class': cls,
-                    'right_ascension': ra,
-                    'declination': dec,
-                    'magnitude': mag,
-                    'distance_ly': dist,
-                    'observation_date': obs_date,
-                    'recommended_filter': filt,
-                    'epoch': ep,
-                }
-            )
-            targets_dict[name] = t
+        ObservationTarget.objects.create(
+            name='Orion Nebula',
+            catalog_id='M42 / NGC 1976',
+            object_class='nebula',
+            right_ascension='05h 35m 17.3s',
+            declination="-05° 23' 28\"",
+            magnitude=4.00,
+            distance_ly=1344.0,
+            observation_date=datetime.date(2026, 1, 20),
+            recommended_filter='H-alpha (656.3nm)',
+            epoch='J2000.0',
+            notes='Primary target for VBO 2.34m VBT and 1.3m JCBT nebular spectroscopy and H-alpha imaging.'
+        )
 
-        self.stdout.write(self.style.SUCCESS(f'  [OK] {len(targets_dict)} VBO Target catalog entries seeded with dates & filters'))
+        self.stdout.write(self.style.SUCCESS('  [OK] Single Target Catalog entry seeded (Orion Nebula M42)'))
 
-        self.stdout.write(self.style.SUCCESS(f'  [OK] {len(targets_dict)} VBO Target catalog entries seeded with dates & filters'))
-
-        # ─── MAINTENANCE TICKETS & CALIBRATIONS ───────────────────────────────
+        # ─── SINGLE DATA FOR MAINTENANCE TICKET & CALIBRATION ────────────────
         from maintenance.models import MaintenanceTicket, CalibrationLog
 
-        MaintenanceTicket.objects.get_or_create(
+        MaintenanceTicket.objects.all().delete()
+
+        MaintenanceTicket.objects.create(
             title='VBT Prime Focus Carriage Lubrication & Encoder Alignment',
-            defaults={
-                'description': 'Scheduled PM for VBT 2.34m prime focus assembly and declination drive gears.',
-                'severity': 'medium',
-                'status': 'in_progress',
-                'telescope': tel_vbt,
-                'instrument': inst_hires,
-                'reported_by': admin_user,
-                'assigned_engineer': engineer2,
-            }
+            description='Scheduled PM for VBT 2.34m prime focus assembly and declination drive gears.',
+            severity='medium',
+            status='in_progress',
+            telescope=tel_vbt,
+            instrument=inst_hires,
+            reported_by=admin_user,
+            assigned_engineer=phanindra_user,
         )
 
-        MaintenanceTicket.objects.get_or_create(
-            title='JCBT CCD Dewar Vacuum Evacuation',
-            defaults={
-                'description': 'Cryo dewar pressure reading 4.2e-7 mbar. Vacuum pump cycle scheduled to achieve <1.0e-7 mbar.',
-                'severity': 'low',
-                'status': 'open',
-                'telescope': tel_jcbt,
-                'instrument': inst_jcbt_ccd,
-                'reported_by': engineer1,
-                'assigned_engineer': engineer1,
-            }
+        self.stdout.write(self.style.SUCCESS('  [OK] Single Maintenance Ticket registered'))
+
+        CalibrationLog.objects.all().delete()
+
+        CalibrationLog.objects.create(
+            instrument=inst_hires,
+            calibration_type='wavelength',
+            standard_lamp_or_target='ThAr Arc Lamp',
+            engineer=phanindra_user,
+            status='completed',
+            notes='1240 arc lines fitted. RMS residual 0.0018 Å.'
         )
 
-        self.stdout.write(self.style.SUCCESS('  [OK] Maintenance tickets registered'))
-
-        # Calibration Logs
-        CalibrationLog.objects.get_or_create(
-            instrument=inst_hires, calibration_type='wavelength',
-            defaults={'standard_lamp_or_target': 'ThAr Arc Lamp', 'engineer': engineer1, 'status': 'completed', 'notes': '1240 arc lines fitted. RMS residual 0.0018 Å.'}
-        )
-        CalibrationLog.objects.get_or_create(
-            instrument=inst_jcbt_ccd, calibration_type='flat',
-            defaults={'standard_lamp_or_target': 'Twilight Sky Flat', 'engineer': engineer2, 'status': 'completed', 'notes': 'Uniformity >99.7% across 2Kx4K CCD sensor.'}
-        )
-
-        self.stdout.write(self.style.SUCCESS('  [OK] Calibration logs seeded'))
+        self.stdout.write(self.style.SUCCESS('  [OK] Single Calibration Log seeded'))
 
         self.stdout.write(self.style.SUCCESS('\n[DONE] VBO Kavalur Technical Staff & Observatory dataset loaded successfully!\n'))
         self.stdout.write('-' * 70)
-        self.stdout.write(self.style.WARNING('VBO Kavalur Staff Credentials:'))
-        for staff in vbo_staff_data:
-            self.stdout.write(f"  {staff['role'].capitalize():<8} -> {staff['username']:<16} / vbo123pass  ({staff['first_name']} {staff['last_name']} - {staff['designation']})")
-        self.stdout.write('-' * 70)
-        self.stdout.write(self.style.WARNING('Demo Shortcut Logins:'))
-        self.stdout.write('  Admin    -> admin         / adminpass123   (Anbazhagan P - Engineer-in-Charge)')
-        self.stdout.write('  Engineer -> engineer1     / engineerpass123(Ramachandran A - Engineer D)')
-        self.stdout.write('  Observer -> observer1     / observerpass123(Venkatesh S - Technical Asst)')
+        self.stdout.write(self.style.WARNING('VBO Observatory Staff Credentials (EXACT MATCH TO UI SCREENSHOT):'))
+        self.stdout.write(f"  STANDARD PASSWORD FOR ALL ACCOUNTS: {STANDARD_PASSWORD}\n")
+        self.stdout.write('  1. Admin    -> admin         / vbo123pass  (Instrumentation admin)')
+        self.stdout.write('  2. Engineer -> phanindra     / vbo123pass  (Phanindra DVS)')
+        self.stdout.write('  3. Observer -> rahulbar      / vbo123pass  (Rahul Bar - VBT)')
+        self.stdout.write('  4. Observer -> venkatesh     / vbo123pass  (Venkatesh S - JCBT)')
+        self.stdout.write('  5. Observer -> surendharnath / vbo123pass  (Surendharnath S - VBT)')
         self.stdout.write('-' * 70)
