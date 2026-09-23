@@ -1,9 +1,10 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.db.models import Q, Count
 from accounts.decorators import engineer_required, admin_required
-from .models import Telescope, TelescopeLog
-from .forms import TelescopeForm, SlewTargetForm
+from .models import Telescope, TelescopeLog, TelescopeDiscussion, TelescopeDiscussionReply
+from .forms import TelescopeForm, SlewTargetForm, TelescopeDiscussionForm, TelescopeDiscussionReplyForm
 
 
 @login_required
@@ -29,13 +30,21 @@ def telescope_detail_view(request, pk):
     })
     logs = telescope.logs.all()[:20]
     instruments = telescope.instruments.all()
+    discussions = telescope.discussions.select_related('user').annotate(reply_count=Count('replies')).order_by('-is_pinned', '-created_at')
+
+    # Discussion quick post form preset to this telescope
+    discussion_form = TelescopeDiscussionForm(initial={'telescope': telescope})
+
     return render(request, 'telescopes/telescope_detail.html', {
         'telescope': telescope,
         'targets': targets,
         'slew_form': slew_form,
         'logs': logs,
         'instruments': instruments,
+        'discussions': discussions,
+        'discussion_form': discussion_form,
     })
+
 
 
 @login_required
@@ -99,6 +108,28 @@ def slew_telescope_view(request, pk):
             )
             messages.success(request, f"Telescope {telescope.code} slewed to {target_name} ({ra}, {dec}). Tracking active.")
     return redirect('telescopes:telescope_detail', pk=telescope.pk)
+
+
+@login_required
+def stop_telescope_view(request, pk):
+    telescope = get_object_or_404(Telescope, pk=pk)
+    if not request.user.can_access_telescope(telescope):
+        messages.error(request, "Access Denied: You are not authorized to stop this telescope.")
+        return redirect('telescopes:telescope_list')
+
+    if request.method == 'POST':
+        telescope.status = Telescope.STATUS_IDLE
+        telescope.save()
+
+        TelescopeLog.objects.create(
+            telescope=telescope,
+            user=request.user,
+            event_type='stop',
+            message="HALT MOTION: Mount motion stopped and tracking halted."
+        )
+        messages.warning(request, f"Telescope {telescope.code}: Motion halted. Tracking disengaged.")
+    return redirect('telescopes:telescope_detail', pk=telescope.pk)
+
 
 
 @login_required
@@ -185,4 +216,162 @@ def update_telemetry_view(request, pk):
             messages.info(request, "No parameter changes submitted.")
 
     return redirect('telescopes:telescope_detail', pk=pk)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# TELESCOPE DISCUSSIONS VIEWS (SEPARATE DISCUSSIONS FOR ALL TELESCOPES)
+# ══════════════════════════════════════════════════════════════════════════════
+
+@login_required
+def discussion_hub_view(request):
+    """
+    Centralized Discussion Hub showing discussions for all separate telescopes.
+    Supports filtering by telescope, topic category, date range, and search query.
+    """
+    telescopes = request.user.get_accessible_telescopes()
+    selected_telescope_id = request.GET.get('telescope', '')
+    selected_category = request.GET.get('category', '')
+    search_query = request.GET.get('q', '').strip()
+    date_from = request.GET.get('date_from', '').strip()
+    date_to = request.GET.get('date_to', '').strip()
+
+    discussions = TelescopeDiscussion.objects.filter(telescope__in=telescopes).select_related('telescope', 'user').annotate(reply_count=Count('replies'))
+
+    selected_telescope = None
+    if selected_telescope_id:
+        try:
+            selected_telescope = telescopes.get(pk=selected_telescope_id)
+            discussions = discussions.filter(telescope=selected_telescope)
+        except (Telescope.DoesNotExist, ValueError):
+            pass
+
+    if selected_category:
+        discussions = discussions.filter(category=selected_category)
+
+    if search_query:
+        discussions = discussions.filter(
+            Q(title__icontains=search_query) |
+            Q(content__icontains=search_query) |
+            Q(user__username__icontains=search_query) |
+            Q(telescope__code__icontains=search_query)
+        )
+
+    # ── DATE FILTERS ───────────────────────────────────────────────────────
+    if date_from:
+        try:
+            discussions = discussions.filter(created_at__date__gte=date_from)
+        except Exception:
+            date_from = ''
+    if date_to:
+        try:
+            discussions = discussions.filter(created_at__date__lte=date_to)
+        except Exception:
+            date_to = ''
+
+    discussions = discussions.order_by('-is_pinned', '-created_at')
+
+    # Initial form data
+    initial_form = {}
+    if selected_telescope:
+        initial_form['telescope'] = selected_telescope
+    form = TelescopeDiscussionForm(initial=initial_form)
+    form.fields['telescope'].queryset = telescopes
+
+    context = {
+        'discussions': discussions,
+        'telescopes': telescopes,
+        'selected_telescope': selected_telescope,
+        'selected_category': selected_category,
+        'search_query': search_query,
+        'date_from': date_from,
+        'date_to': date_to,
+        'categories': TelescopeDiscussion.CATEGORY_CHOICES,
+        'form': form,
+    }
+
+    return render(request, 'telescopes/discussion_hub.html', context)
+
+
+
+@login_required
+def discussion_detail_view(request, pk):
+    """
+    Detailed discussion post page with full thread and reply box.
+    """
+    discussion = get_object_or_404(TelescopeDiscussion.objects.select_related('telescope', 'user'), pk=pk)
+    if not request.user.can_access_telescope(discussion.telescope):
+        messages.error(request, "Access Denied: You do not have permission to view discussions for this telescope.")
+        return redirect('telescopes:discussion_hub')
+
+    replies = discussion.replies.select_related('user').order_by('created_at')
+
+    if request.method == 'POST':
+        reply_form = TelescopeDiscussionReplyForm(request.POST)
+        if reply_form.is_valid():
+            reply = reply_form.save(commit=False)
+            reply.discussion = discussion
+            reply.user = request.user
+            reply.save()
+            messages.success(request, "Reply posted successfully.")
+            return redirect('telescopes:discussion_detail', pk=discussion.pk)
+    else:
+        reply_form = TelescopeDiscussionReplyForm()
+
+    return render(request, 'telescopes/discussion_detail.html', {
+        'discussion': discussion,
+        'replies': replies,
+        'reply_form': reply_form,
+    })
+
+
+@login_required
+def discussion_create_view(request):
+    """
+    Handles submission of new discussion topics.
+    """
+    if request.method == 'POST':
+        form = TelescopeDiscussionForm(request.POST)
+        # Check telescope access
+        telescope_id = request.POST.get('telescope')
+        if telescope_id:
+            try:
+                telescope = Telescope.objects.get(pk=telescope_id)
+                if not request.user.can_access_telescope(telescope):
+                    messages.error(request, "Access Denied: You cannot post discussions for this telescope.")
+                    return redirect('telescopes:discussion_hub')
+            except Telescope.DoesNotExist:
+                pass
+
+        if form.is_valid():
+            discussion = form.save(commit=False)
+            discussion.user = request.user
+            discussion.save()
+            messages.success(request, f"Discussion '{discussion.title}' published for telescope [{discussion.telescope.code}].")
+            next_url = request.POST.get('next')
+            if next_url:
+                return redirect(next_url)
+            return redirect('telescopes:discussion_detail', pk=discussion.pk)
+        else:
+            messages.error(request, "Failed to create discussion. Please check the form errors.")
+
+    return redirect('telescopes:discussion_hub')
+
+
+@login_required
+def toggle_pin_discussion_view(request, pk):
+    """
+    Allows engineers or admins to pin/unpin a discussion topic.
+    """
+    discussion = get_object_or_404(TelescopeDiscussion, pk=pk)
+    if not (request.user.is_admin or request.user.is_engineer):
+        messages.error(request, "Access Denied: Only engineers and admins can pin discussions.")
+        return redirect('telescopes:discussion_detail', pk=pk)
+
+    discussion.is_pinned = not discussion.is_pinned
+    discussion.save()
+
+    status_str = "pinned to top" if discussion.is_pinned else "unpinned"
+    messages.info(request, f"Discussion '{discussion.title}' has been {status_str}.")
+    return redirect('telescopes:discussion_detail', pk=pk)
+
 

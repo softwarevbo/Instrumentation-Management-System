@@ -50,6 +50,12 @@ class User(AbstractUser):
         help_text="Telescopes this observer is authorized to view and control."
     )
 
+    # ── NOTIFICATION TRACKING ────────────────────────────────────────────────
+    last_notif_viewed = models.DateTimeField(
+        null=True, blank=True,
+        help_text="Last time user viewed their notifications. Used to compute unseen count."
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

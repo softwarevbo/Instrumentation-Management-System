@@ -361,6 +361,46 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS('  [OK] Single Calibration Log seeded'))
 
+        # ─── SITE FEEDBACK (1 sample entry) ──────────────────────────────────
+        from core.models import SiteFeedback
+        from accounts.models import User as UserModel
+
+        SiteFeedback.objects.all().delete()
+        try:
+            fb_user = UserModel.objects.get(username='phanindra')
+            SiteFeedback.objects.create(
+                user=fb_user,
+                name=fb_user.get_full_name() or 'Phanindra DVS',
+                email=fb_user.email,
+                category='ui_ux',
+                subject='Dark theme readability during night observations',
+                message='The dark mode interface is excellent for late-night observing sessions. The contrast between telemetry values and background makes it very easy to read without affecting dark adaptation.',
+                status='new',
+                is_public=True,
+            )
+        except UserModel.DoesNotExist:
+            pass
+        self.stdout.write(self.style.SUCCESS('  [OK] 1 sample Site Feedback entry seeded'))
+
+        # ─── TELESCOPE DISCUSSIONS (1 sample entry) ───────────────────────────
+        from telescopes.models import TelescopeDiscussion, TelescopeDiscussionReply
+
+        TelescopeDiscussion.objects.all().delete()
+        TelescopeDiscussionReply.objects.all().delete()
+        try:
+            disc_user = UserModel.objects.get(username='phanindra')
+            disc = TelescopeDiscussion.objects.create(
+                telescope=tel_vbt,
+                user=disc_user,
+                title='Good night for observations tonight!',
+                content='The sky looks clear and the conditions seem good for tonight. Planning to start around 8 PM. Anyone else joining the session?',
+                category='general',
+                is_pinned=False,
+            )
+        except UserModel.DoesNotExist:
+            pass
+        self.stdout.write(self.style.SUCCESS('  [OK] 1 sample Telescope Discussion entry seeded'))
+
         self.stdout.write(self.style.SUCCESS('\n[DONE] VBO Kavalur Technical Staff & Observatory dataset loaded successfully!\n'))
         self.stdout.write('-' * 70)
         self.stdout.write(self.style.WARNING('VBO Observatory Staff Credentials (EXACT MATCH TO UI SCREENSHOT):'))
@@ -371,3 +411,4 @@ class Command(BaseCommand):
         self.stdout.write('  4. Observer -> venkatesh     / vbo123pass  (Venkatesh S - JCBT)')
         self.stdout.write('  5. Observer -> surendharnath / vbo123pass  (Surendharnath S - VBT)')
         self.stdout.write('-' * 70)
+

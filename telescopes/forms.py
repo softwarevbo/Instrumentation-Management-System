@@ -24,3 +24,29 @@ class SlewTargetForm(forms.Form):
     right_ascension = forms.CharField(max_length=30, widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': '12h 30m 45.2s'}))
     declination = forms.CharField(max_length=30, widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': '+45° 15\' 22.0"' }))
     epoch = forms.CharField(max_length=10, initial="J2000", widget=forms.TextInput(attrs={'class': 'form-control'}))
+
+
+from .models import TelescopeDiscussion, TelescopeDiscussionReply
+
+
+class TelescopeDiscussionForm(forms.ModelForm):
+    class Meta:
+        model = TelescopeDiscussion
+        fields = ['telescope', 'category', 'title', 'content', 'is_pinned']
+        widgets = {
+            'telescope': forms.Select(attrs={'class': 'form-select'}),
+            'category': forms.Select(attrs={'class': 'form-select'}),
+            'title': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Discussion topic / title...'}),
+            'content': forms.Textarea(attrs={'class': 'form-control', 'rows': 4, 'placeholder': 'Write message or log details for this telescope...'}),
+            'is_pinned': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+
+
+class TelescopeDiscussionReplyForm(forms.ModelForm):
+    class Meta:
+        model = TelescopeDiscussionReply
+        fields = ['message']
+        widgets = {
+            'message': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Write your reply...'}),
+        }
+

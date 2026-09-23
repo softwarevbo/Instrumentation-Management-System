@@ -119,9 +119,11 @@ class PlateSolverEngine:
 
             # Create gaussian profile blobs at the location of stars
             x1, y1 = np.ogrid[-2:3, -2:3]
-            if 0 <= currentStar_imageCoord[0] < self.image_size[0] and 0 <= currentStar_imageCoord[1] < self.image_size[1]:
-                self.img_data[currentStar_imageCoord[0] + x1, currentStar_imageCoord[1] + y1] = peak_intensity * np.exp(
+            ix, iy = currentStar_imageCoord[0], currentStar_imageCoord[1]
+            if 2 <= ix < self.image_size[0] - 2 and 2 <= iy < self.image_size[1] - 2:
+                self.img_data[ix + x1, iy + y1] = peak_intensity * np.exp(
                     -((x1 ** 2 / 18) + (y1 ** 2 / 18)))
+
 
         stars_data = []
         for i in range(np.shape(self.starsInCurrentField)[0]):

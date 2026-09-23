@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Nightwatch — Telescope Control</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e13;
+    --bg-2: #0e141b;
+    --panel: #121922;
+    --panel-border: #232d39;
+    --hairline: #1c2530;
+    --text: #e9edf3;
+    --text-dim: #8b96a5;
+    --text-faint: #57626f;
+    --amber: #ff8a3d;
+    --amber-dim: #a35a29;
+    --ok: #3ddc8f;
+    --warn: #ff5c5c;
+    --off: #4a5560;
+
+    --sans: 'Space Grotesk', system-ui, sans-serif;
+    --mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+    color-scheme: dark;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: var(--bg);
+    font-family: var(--sans);
+    color: var(--text);
+  }
+  body {
+    background-image:
+      radial-gradient(1px 1px at 10% 20%, rgba(255,255,255,0.35) 0, transparent 100%),
+      radial-gradient(1px 1px at 80% 10%, rgba(255,255,255,0.25) 0, transparent 100%),
+      radial-gradient(1.5px 1.5px at 60% 70%, rgba(255,255,255,0.3) 0, transparent 100%),
+      radial-gradient(1px 1px at 30% 85%, rgba(255,255,255,0.2) 0, transparent 100%),
+      radial-gradient(1px 1px at 92% 60%, rgba(255,255,255,0.3) 0, transparent 100%),
+      radial-gradient(1.5px 1.5px at 45% 40%, rgba(255,255,255,0.15) 0, transparent 100%),
+      linear-gradient(180deg, var(--bg-2) 0%, var(--bg) 100%);
+    background-repeat: no-repeat;
+    background-size: cover;
+    min-height: 100%;
+    display: flex;
+    justify-content: center;
+    padding: clamp(16px, 3vw, 40px);
+  }
+
+  .app {
+    width: 100%;
+    max-width: 1180px;
+  }
+
+  /* Header */
+  header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding-bottom: 18px;
+    margin-bottom: 22px;
+    border-bottom: 1px solid var(--hairline);
+  }
+  .brand {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .brand h1 {
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    margin: 0;
+  }
+  .brand .obs {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-faint);
+  }
+  .clock {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--text-dim);
+    display: flex;
+    gap: 18px;
+  }
+  .clock b { color: var(--text); font-weight: 500; }
+
+  /* Menu bar */
+  .menubar {
+    display: flex;
+    gap: 2px;
+    margin-bottom: 18px;
+    position: relative;
+  }
+  .menu {
+    position: relative;
+  }
+  .menu > button {
+    font-family: var(--sans);
+    font-size: 12.5px;
+    color: var(--text-dim);
+    background: transparent;
+    border: 1px solid transparent;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  .menu > button:hover,
+  .menu.open > button {
+    color: var(--text);
+    background: var(--panel);
+    border-color: var(--panel-border);
+  }
+  .menu-drop {
+    display: none;
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    min-width: 170px;
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    padding: 6px;
+    box-shadow: 0 12px 24px rgba(0,0,0,0.4);
+    z-index: 20;
+  }
+  .menu.open .menu-drop { display: block; }
+  .menu-drop button {
+    display: block;
+    width: 100%;
+    text-align: left;
+    font-family: var(--sans);
+    font-size: 12.5px;
+    color: var(--text-dim);
+    background: transparent;
+    border: none;
+    padding: 7px 9px;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+  .menu-drop button:hover { background: #182231; color: var(--text); }
+
+  /* Hero */
+  .hero {
+    display: grid;
+    grid-template-columns: 1.3fr 1fr;
+    gap: 18px;
+    margin-bottom: 18px;
+  }
+  @media (max-width: 800px) {
+    .hero { grid-template-columns: 1fr; }
+  }
+
+  .hero-readout {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 10px;
+    padding: 22px 24px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero-readout::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(120deg, rgba(255,138,61,0.06), transparent 55%);
+    pointer-events: none;
+  }
+  .target-name {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-dim);
+    text-transform: none;
+    margin-bottom: 6px;
+  }
+  .target-name span { color: var(--text); }
+  .coords {
+    display: flex;
+    gap: 36px;
+    flex-wrap: wrap;
+    margin: 6px 0 18px 0;
+  }
+  .coord-block .k { font-size: 12px; color: var(--text-faint); margin-bottom: 4px; }
+  .coord-block .v {
+    font-family: var(--mono);
+    font-size: clamp(24px, 4vw, 34px);
+    font-weight: 500;
+    letter-spacing: 0.01em;
+  }
+  .coord-sub {
+    display: flex;
+    gap: 26px;
+    flex-wrap: wrap;
+    padding-top: 14px;
+    border-top: 1px solid var(--hairline);
+  }
+  .coord-sub .k { font-size: 11px; color: var(--text-faint); }
+  .coord-sub .v { font-family: var(--mono); font-size: 14px; color: var(--text-dim); }
+
+  .controls {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 10px;
+    padding: 22px 24px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .mode-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--amber);
+    border: 1px solid var(--amber-dim);
+    background: rgba(255,138,61,0.08);
+    border-radius: 999px;
+    padding: 5px 12px;
+    width: fit-content;
+    margin-bottom: 18px;
+  }
+  .mode-pill .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--amber);
+  }
+  .btn-row { display: flex; flex-direction: column; gap: 10px; }
+  button.action {
+    font-family: var(--sans);
+    font-size: 14px;
+    font-weight: 500;
+    padding: 12px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--panel-border);
+    background: #161f2a;
+    color: var(--text);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: border-color 0.15s ease, background 0.15s ease;
+  }
+  button.action:hover { border-color: #37455a; background: #182231; }
+  button.action:active { transform: translateY(1px); }
+  button.action .hint { font-family: var(--mono); font-size: 11px; color: var(--text-faint); }
+
+  button.slew { border-color: #2a4a3e; }
+  button.slew.active { background: rgba(61,220,143,0.12); border-color: var(--ok); }
+  button.trail { border-color: #2a3a4a; }
+  button.trail.active { background: rgba(255,138,61,0.12); border-color: var(--amber); }
+  button.stop {
+    background: rgba(255,92,92,0.08);
+    border-color: #5a2a2a;
+    color: #ffb0b0;
+  }
+  button.stop:hover { background: rgba(255,92,92,0.16); border-color: var(--warn); }
+
+  /* Grid of panels */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+  }
+  @media (max-width: 900px) {
+    .grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 520px) {
+    .grid { grid-template-columns: 1fr; }
+  }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 10px;
+    padding: 16px 16px 14px 16px;
+  }
+  .panel h2 {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-dim);
+    margin: 0 0 12px 0;
+  }
+  .kv { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; }
+  .kv + .kv { border-top: 1px solid var(--hairline); }
+  .kv .k { font-size: 12.5px; color: var(--text-dim); }
+  .kv .v { font-family: var(--mono); font-size: 13px; }
+
+  .status-dot {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+  .status-dot::before {
+    content: "";
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--off);
+  }
+  .status-dot.on { color: var(--ok); }
+  .status-dot.on::before { background: var(--ok); box-shadow: 0 0 6px var(--ok); }
+  .status-dot.off { color: var(--text-faint); }
+  .status-dot.off::before { background: var(--off); }
+  .status-dot.warn { color: var(--amber); }
+  .status-dot.warn::before { background: var(--amber); box-shadow: 0 0 6px var(--amber); }
+
+  /* Activity log */
+  .log-panel {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .log-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 128px;
+    overflow-y: auto;
+  }
+  .log-line {
+    display: flex;
+    gap: 12px;
+    font-family: var(--mono);
+    font-size: 12.5px;
+  }
+  .log-line .t { color: var(--text-faint); flex-shrink: 0; }
+  .log-line .m { color: var(--text-dim); }
+
+  footer {
+    margin-top: 22px;
+    padding-top: 14px;
+    border-top: 1px solid var(--hairline);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-faint);
+  }
+
+  ::-webkit-scrollbar { width: 8px; }
+  ::-webkit-scrollbar-thumb { background: #26313f; border-radius: 4px; }
+
+  a { color: inherit; }
+  :focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <header>
+    <div class="brand">
+      <h1>Nightwatch</h1>
+      <span class="obs">observatory control · east dome</span>
+    </div>
+    <div class="clock">
+      <span>UT <b id="clock-ut">—</b></span>
+      <span>ST <b id="clock-st">—</b></span>
+      <span>Julian <b id="clock-jd">—</b></span>
+    </div>
+  </header>
+
+  <nav class="menubar" id="menubar">
+    <div class="menu" data-menu="file">
+      <button type="button">File</button>
+      <div class="menu-drop">
+        <button type="button" data-log="Opened session log">Open log…</button>
+        <button type="button" data-log="Exported current session">Export session…</button>
+        <button type="button" data-log="Exit requested">Exit</button>
+      </div>
+    </div>
+    <div class="menu" data-menu="telescope">
+      <button type="button">Telescope</button>
+      <div class="menu-drop">
+        <button type="button" data-log="Slew to coordinates dialog opened">Slew to…</button>
+        <button type="button" data-log="Park position requested">Park</button>
+        <button type="button" data-log="Home routine requested">Find home</button>
+      </div>
+    </div>
+    <div class="menu" data-menu="view">
+      <button type="button">View</button>
+      <div class="menu-drop">
+        <button type="button" data-log="Toggled all-sky view">All-sky view</button>
+        <button type="button" data-log="Toggled finder chart">Finder chart</button>
+      </div>
+    </div>
+    <div class="menu" data-menu="options">
+      <button type="button">Options</button>
+      <div class="menu-drop">
+        <button type="button" data-log="Opened site & time settings">Site &amp; time…</button>
+        <button type="button" data-log="Opened rate limits settings">Rate limits…</button>
+      </div>
+    </div>
+    <div class="menu" data-menu="help">
+      <button type="button">Help</button>
+      <div class="menu-drop">
+        <button type="button" data-log="Opened documentation">Documentation</button>
+        <button type="button" data-log="Opened about panel">About Nightwatch</button>
+      </div>
+    </div>
+  </nav>
+
+  <div class="hero">
+    <div class="hero-readout">
+      <div class="target-name">Tracking target <span id="target-name">NGC 6205</span></div>
+      <div class="coords">
+        <div class="coord-block">
+          <div class="k">Right ascension</div>
+          <div class="v">15h 40m 14.3s</div>
+        </div>
+        <div class="coord-block">
+          <div class="k">Declination</div>
+          <div class="v">+42° 41′ 38″</div>
+        </div>
+      </div>
+      <div class="coord-sub">
+        <div><span class="k">Hour angle </span><span class="v">00 00 0.7</span></div>
+        <div><span class="k">Epoch </span><span class="v">2014.7</span></div>
+        <div><span class="k">Airmass </span><span class="v">1.000</span></div>
+        <div><span class="k">Zenith dist. </span><span class="v">0.1°</span></div>
+      </div>
+      <div class="coord-sub" style="border-top:none; padding-top:0;">
+        <div><span class="k">Next object </span><span class="v" id="next-object" style="color:var(--text-faint)">—</span></div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <div class="mode-pill"><span class="dot"></span><span id="mode-label">East side operation</span></div>
+      <div class="btn-row">
+        <button class="action slew" id="btn-slew">
+          Start slew <span class="hint">move to target</span>
+        </button>
+        <button class="action trail" id="btn-trail">
+          Start trail <span class="hint">offset track</span>
+        </button>
+        <button class="action stop" id="btn-stop">
+          Stop <span class="hint">halt all motion</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid">
+
+    <div class="panel">
+      <h2>Status</h2>
+      <div class="kv"><span class="k">Dome</span><span class="status-dot off" id="st-dome">Off</span></div>
+      <div class="kv"><span class="k">Track</span><span class="status-dot off" id="st-track">Off</span></div>
+      <div class="kv"><span class="k">Drives</span><span class="status-dot on">On</span></div>
+      <div class="kv"><span class="k">Dome mode</span><span class="v">TRACK</span></div>
+      <div class="kv"><span class="k">Home</span><span class="status-dot warn">Dome home</span></div>
+    </div>
+
+    <div class="panel">
+      <h2>Rates</h2>
+      <div class="kv"><span class="k">Track RA</span><span class="v">0.000</span></div>
+      <div class="kv"><span class="k">Track Dec</span><span class="v">0.000</span></div>
+      <div class="kv"><span class="k">Cor</span><span class="status-dot on">On</span></div>
+      <div class="kv"><span class="k">Cor RA / Dec</span><span class="v">-0.012 / 0.000</span></div>
+      <div class="kv"><span class="k">Guide</span><span class="v">1.000</span></div>
+      <div class="kv"><span class="k">Set</span><span class="v">60.000</span></div>
+      <div class="kv"><span class="k">Slew</span><span class="v">2.0</span></div>
+      <div class="kv"><span class="k">Trail rate / len / P.A.</span><span class="v">0.0 / 0.0 / 0.0</span></div>
+    </div>
+
+    <div class="panel">
+      <h2>Optics</h2>
+      <div class="kv"><span class="k">Telescope az.</span><span class="v">279.6°</span></div>
+      <div class="kv"><span class="k">Dome az.</span><span class="v">103.5°</span></div>
+      <div class="kv"><span class="k">Focus</span><span class="v">3582.6</span></div>
+      <div class="kv"><span class="k">Analog focus</span><span class="v">3580</span></div>
+      <div class="kv"><span class="k">Cosine(dec)</span><span class="status-dot on">On</span></div>
+    </div>
+
+    <div class="panel">
+      <h2>Links</h2>
+      <div class="kv"><span class="k">ExCom 1</span><span class="status-dot off">Off</span></div>
+      <div class="kv"><span class="k">ExCom 2</span><span class="status-dot off">Off</span></div>
+      <div class="kv"><span class="k">MNCP</span><span class="status-dot on">Active</span></div>
+      <div class="kv"><span class="k">TCP/IP 1</span><span class="status-dot off">Off</span></div>
+      <div class="kv"><span class="k">TCP/IP 2</span><span class="status-dot off">Off</span></div>
+    </div>
+
+    <div class="panel log-panel">
+      <h2>Activity</h2>
+      <div class="log-list" id="log-list">
+        <div class="log-line"><span class="t">20:15:50</span><span class="m">Set dome left line high</span></div>
+        <div class="log-line"><span class="t">20:15:44</span><span class="m">Focus initialization is done</span></div>
+      </div>
+    </div>
+
+  </div>
+
+  <footer>
+    <span>UT date 09 29 2014</span>
+    <span>Dome home · initialized</span>
+  </footer>
+
+</div>
+
+<script>
+(function () {
+  var ELog = document.getElementById('log-list');
+  var slewOn = false, trailOn = false;
+
+  function pad(n) { return String(n).padStart(2, '0'); }
+
+  function tick() {
+    var now = new Date();
+    var utHours = pad(now.getUTCHours()), utMin = pad(now.getUTCMinutes()), utSec = pad(now.getUTCSeconds());
+    document.getElementById('clock-ut').textContent = utHours + ':' + utMin + ':' + utSec;
+
+    // Approximate local sidereal time for display purposes
+    var jd = (now.getTime() / 86400000) + 2440587.5;
+    document.getElementById('clock-jd').textContent = jd.toFixed(6);
+    var gmst = (18.697374558 + 24.06570982441908 * (jd - 2451545.0)) % 24;
+    if (gmst < 0) gmst += 24;
+    var stH = Math.floor(gmst), stM = Math.floor((gmst - stH) * 60), stS = Math.floor((((gmst - stH) * 60) - stM) * 60);
+    document.getElementById('clock-st').textContent = pad(stH) + ':' + pad(stM) + ':' + pad(stS);
+  }
+  tick();
+  setInterval(tick, 1000);
+
+  function logLine(msg) {
+    var now = new Date();
+    var t = pad(now.getUTCHours()) + ':' + pad(now.getUTCMinutes()) + ':' + pad(now.getUTCSeconds());
+    var row = document.createElement('div');
+    row.className = 'log-line';
+    row.innerHTML = '<span class="t">' + t + '</span><span class="m">' + msg + '</span>';
+    ELog.insertBefore(row, ELog.firstChild);
+    while (ELog.children.length > 8) ELog.removeChild(ELog.lastChild);
+  }
+
+  var menus = document.querySelectorAll('.menu');
+  menus.forEach(function (menu) {
+    var toggle = menu.querySelector('button');
+    toggle.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var isOpen = menu.classList.contains('open');
+      menus.forEach(function (m) { m.classList.remove('open'); });
+      if (!isOpen) menu.classList.add('open');
+    });
+    menu.querySelectorAll('.menu-drop button').forEach(function (item) {
+      item.addEventListener('click', function (e) {
+        e.stopPropagation();
+        logLine(item.getAttribute('data-log') || (item.textContent + ' selected'));
+        menu.classList.remove('open');
+      });
+    });
+  });
+  document.addEventListener('click', function () {
+    menus.forEach(function (m) { m.classList.remove('open'); });
+  });
+
+  var btnSlew = document.getElementById('btn-slew');
+  var btnTrail = document.getElementById('btn-trail');
+  var btnStop = document.getElementById('btn-stop');
+  var stDome = document.getElementById('st-dome');
+  var stTrack = document.getElementById('st-track');
+  var modeLabel = document.getElementById('mode-label');
+
+  btnSlew.addEventListener('click', function () {
+    slewOn = !slewOn;
+    btnSlew.classList.toggle('active', slewOn);
+    stTrack.classList.toggle('on', slewOn);
+    stTrack.classList.toggle('off', !slewOn);
+    stTrack.textContent = slewOn ? 'On' : 'Off';
+    modeLabel.textContent = slewOn ? 'Slewing to target' : 'East side operation';
+    logLine(slewOn ? 'Slew started toward target' : 'Slew halted');
+  });
+
+  btnTrail.addEventListener('click', function () {
+    trailOn = !trailOn;
+    btnTrail.classList.toggle('active', trailOn);
+    stDome.classList.toggle('on', trailOn);
+    stDome.classList.toggle('off', !trailOn);
+    stDome.textContent = trailOn ? 'On' : 'Off';
+    logLine(trailOn ? 'Trail tracking engaged' : 'Trail tracking stopped');
+  });
+
+  btnStop.addEventListener('click', function () {
+    slewOn = false; trailOn = false;
+    btnSlew.classList.remove('active');
+    btnTrail.classList.remove('active');
+    stTrack.classList.remove('on'); stTrack.classList.add('off'); stTrack.textContent = 'Off';
+    stDome.classList.remove('on'); stDome.classList.add('off'); stDome.textContent = 'Off';
+    modeLabel.textContent = 'East side operation';
+    logLine('Stop — all motion halted');
+  });
+})();
+</script>
+
+</body>
+</html>

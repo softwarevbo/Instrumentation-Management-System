@@ -597,6 +597,111 @@
         }
         .action-card:hover i { color: #fff; }
 
+        /* ── NOTIFICATION BELL ── */
+        .notif-wrap {
+            position: relative;
+        }
+        .notif-btn {
+            width: 36px; height: 36px;
+            border-radius: var(--radius-sm);
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+            font-size: 15px;
+            transition: var(--transition);
+            position: relative;
+        }
+        .notif-btn:hover {
+            background: var(--bg-card-hover);
+            color: var(--text-primary);
+            border-color: var(--border-light);
+        }
+        .notif-btn.active {
+            background: var(--accent-glow);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+        .notif-badge {
+            position: absolute;
+            top: -5px; right: -5px;
+            background: var(--red);
+            color: #fff;
+            font-size: 9px; font-weight: 800;
+            min-width: 16px; height: 16px;
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            padding: 0 3px;
+            animation: pulse 2s infinite;
+            border: 2px solid var(--bg-secondary);
+        }
+        .notif-dropdown {
+            position: absolute;
+            top: calc(100% + 10px);
+            right: 0;
+            width: 300px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            z-index: 200;
+            display: none;
+            overflow: hidden;
+            animation: fadeDropdown 0.18s ease;
+        }
+        .notif-dropdown.open { display: block; }
+        @keyframes fadeDropdown {
+            from { opacity: 0; transform: translateY(-6px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .notif-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        .notif-header-count {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+        .notif-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            text-decoration: none;
+            color: inherit;
+            transition: var(--transition);
+            border-bottom: 1px solid var(--border);
+        }
+        .notif-item:last-child { border-bottom: none; }
+        .notif-item:hover {
+            background: var(--bg-card-hover);
+        }
+        .notif-item-icon {
+            width: 36px; height: 36px;
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 15px;
+            flex-shrink: 0;
+        }
+        .notif-item-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 3px;
+        }
+        .notif-item-sub {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
         {% block extra_style %}{% endblock %}
     </style>
 </head>
@@ -666,12 +771,22 @@
         </a>
         {% endif %}
 
+        <!-- COMMUNITY & FEEDBACK -->
+        <div class="nav-section-label">Community & Feedback</div>
+        <a href="{% url 'telescopes:discussion_hub' %}" class="nav-item {% block nav_discussions %}{% endblock %}">
+            <i class="fas fa-comments"></i> Telescope Discussions
+        </a>
+        <a href="{% url 'core:feedback' %}" class="nav-item {% block nav_feedback %}{% endblock %}">
+            <i class="fas fa-heart-pulse"></i> Site Feedback
+        </a>
+
         <!-- PROFILE -->
         <div class="nav-section-label">Account</div>
         <a href="{% url 'accounts:profile' %}" class="nav-item {% block nav_profile %}{% endblock %}">
             <i class="fas fa-circle-user"></i> My Profile
         </a>
     </nav>
+
 
     <!-- USER CARD -->
     <div class="sidebar-user">
@@ -710,9 +825,64 @@
             {% if critical_tickets %}
             <span class="status-pill fault"><i class="fas fa-triangle-exclamation"></i> {{ critical_tickets }} Critical</span>
             {% endif %}
+
+            {% if user.is_authenticated %}
+            <!-- ═══ NOTIFICATION BELL ═══ -->
+            <div class="notif-wrap" id="notifWrap">
+                <button class="notif-btn" id="notifBtn" onclick="toggleNotifDropdown()" title="Notifications">
+                    <i class="fas fa-bell"></i>
+                    {% if notif_count > 0 %}
+                    <span class="notif-badge" id="notifBadge">{{ notif_count }}</span>
+                    {% endif %}
+                </button>
+
+                <div class="notif-dropdown" id="notifDropdown">
+                    <div class="notif-header">
+                        <span><i class="fas fa-bell" style="color:var(--accent);"></i> Notifications</span>
+                        <span class="notif-header-count" id="notifHeaderCount">
+                            {% if notif_count > 0 %}{{ notif_count }} new{% else %}Up to date{% endif %}
+                        </span>
+                    </div>
+
+                    <a href="{% url 'telescopes:discussion_hub' %}" class="notif-item" onclick="closeNotifDropdown()">
+                        <div class="notif-item-icon" style="background:var(--accent-glow); color:var(--accent);">
+                            <i class="fas fa-comments"></i>
+                        </div>
+                        <div class="notif-item-body">
+                            <div class="notif-item-title">Telescope Discussions</div>
+                            <div class="notif-item-sub">
+                                {% if notif_discussions > 0 %}
+                                    <span style="color:var(--accent); font-weight:700;">{{ notif_discussions }} new</span> since your last visit
+                                {% else %}
+                                    No new discussions
+                                {% endif %}
+                            </div>
+                        </div>
+                    </a>
+
+                    <a href="{% url 'core:feedback' %}" class="notif-item" onclick="closeNotifDropdown()">
+                        <div class="notif-item-icon" style="background:var(--purple-dim); color:var(--purple);">
+                            <i class="fas fa-heart-pulse"></i>
+                        </div>
+                        <div class="notif-item-body">
+                            <div class="notif-item-title">Site Feedback & Bug Reports</div>
+                            <div class="notif-item-sub">
+                                {% if notif_feedback > 0 %}
+                                    <span style="color:var(--purple); font-weight:700;">{{ notif_feedback }} new</span> since your last visit
+                                {% else %}
+                                    No new feedback
+                                {% endif %}
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+
             {% block topbar_actions %}{% endblock %}
         </div>
     </header>
+
 
     <!-- MESSAGES -->
     {% if messages %}
@@ -743,7 +913,7 @@
     updateClock();
     setInterval(updateClock, 1000);
 
-    // Auto-dismiss success, error, info, warning alert messages after 2 seconds
+    // Auto-dismiss messages after 2 seconds
     document.addEventListener('DOMContentLoaded', function() {
         const alerts = document.querySelectorAll('.messages-container .alert, .alert');
         if (alerts.length > 0) {
@@ -759,12 +929,59 @@
                     alert.style.paddingBottom = '0px';
                     alert.style.overflow = 'hidden';
                     setTimeout(function() {
-                        if (alert.parentNode) {
-                            alert.remove();
-                        }
+                        if (alert.parentNode) alert.remove();
                     }, 500);
                 });
             }, 2000);
+        }
+    });
+
+    // ── NOTIFICATION BELL ─────────────────────────────────────────────────
+    let notifOpen = false;
+    let notifMarked = false;
+
+    function toggleNotifDropdown() {
+        const dropdown = document.getElementById('notifDropdown');
+        const btn = document.getElementById('notifBtn');
+        notifOpen = !notifOpen;
+
+        if (notifOpen) {
+            dropdown.classList.add('open');
+            btn.classList.add('active');
+
+            // Mark as read via AJAX — only once per open
+            if (!notifMarked) {
+                notifMarked = true;
+                fetch('{% url "core:mark_notifications_read" %}', {
+                    method: 'GET',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                }).then(() => {
+                    // Hide the badge immediately
+                    const badge = document.getElementById('notifBadge');
+                    if (badge) badge.style.display = 'none';
+                    const countEl = document.getElementById('notifHeaderCount');
+                    if (countEl) countEl.textContent = 'Up to date';
+                }).catch(() => {});
+            }
+        } else {
+            dropdown.classList.remove('open');
+            btn.classList.remove('active');
+        }
+    }
+
+    function closeNotifDropdown() {
+        const dropdown = document.getElementById('notifDropdown');
+        const btn = document.getElementById('notifBtn');
+        if (dropdown) dropdown.classList.remove('open');
+        if (btn) btn.classList.remove('active');
+        notifOpen = false;
+    }
+
+    // Close when clicking outside
+    document.addEventListener('click', function(e) {
+        const wrap = document.getElementById('notifWrap');
+        if (wrap && !wrap.contains(e.target) && notifOpen) {
+            closeNotifDropdown();
         }
     });
 </script>

@@ -159,10 +159,18 @@
                 <canvas id="plateCanvas" width="540" height="540"></canvas>
             </div>
 
-            <!-- CANVAS TELEMETRY READOUT FOOTER (Matching staticText_MouseImageCoord in PlateSolver.py) -->
+            <!-- CANVAS TELEMETRY READOUT FOOTER (Matching staticText_MouseRADec & staticText_MouseImageCoord in PlateSolver.py) -->
             <div class="canvas-telemetry-bar">
-                <span id="staticText_MouseImageCoord" style="color:var(--cyan);">X: 000, Y: 000 = [0000.00]</span>
+                <div style="display:flex; justify-content:space-between; align-items:center; width:100%; gap:12px; flex-wrap:wrap;">
+                    <span id="staticText_MouseRADec" style="color:var(--yellow); font-weight:600; font-family:'JetBrains Mono', monospace; font-size:12px;">
+                        RA: 000.000°, Dec: +00.000° &nbsp;|&nbsp; RA: 0.00000, Dec: 0.00000 rad
+                    </span>
+                    <span id="staticText_MouseImageCoord" style="color:var(--cyan); font-family:'JetBrains Mono', monospace; font-size:12px;">
+                        X: 000, Y: 000 = [0000.00]
+                    </span>
+                </div>
             </div>
+
         </div>
 
         <!-- FIELD DIRECTION & SELECTED STAR CARDS -->
@@ -257,41 +265,55 @@
         <!-- 
         <div class="card">
             <div class="card-header">
-                <div class="card-title"><i class="fas fa-microchip"></i>Plate Solver</div>
+                <div class="card-title"><i class="fas fa-microchip"></i>Plate Solver Engine</div>
                 <span id="solverStatusBadge" class="status-indicator-badge status-idle">IDLE</span>
             </div>
 
             <div style="display:flex; flex-direction:column; gap:12px;">
+                <!-- TELESCOPE SELECTOR FOR SYNC -->
+                <div class="form-group" style="margin-bottom:4px;">
+                    <label class="form-label" style="font-size:11px; color:var(--accent);">Select Target Telescope</label>
+                    <select id="telescopeSelect" class="form-select" style="font-size:12px;">
+                        {% for tel in telescopes %}
+                        <option value="{{ tel.id }}" {% if tel.id == selected_telescope.id %}selected{% endif %}>
+                            {{ tel.code }} — {{ tel.name }}
+                        </option>
+                        {% empty %}
+                        <option value="">No Telescopes Available</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
                 <div class="metric-box">
-                    <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase;">Solved Center Coordinates</div>
-                    <div id="resSolvedRA" class="mono" style="font-size:14px; font-weight:700; color:var(--cyan); margin-top:2px;">RA: --h --m --s</div>
-                    <div id="resSolvedDec" class="mono" style="font-size:14px; font-weight:700; color:var(--cyan);">Dec: --° --' --"</div>
+                    <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase;">Solved Center Coordinates</div>
+                    <div id="resSolvedRA" class="mono" style="font-size:13px; font-weight:700; color:var(--cyan); margin-top:2px;">RA: --h --m --s</div>
+                    <div id="resSolvedDec" class="mono" style="font-size:13px; font-weight:700; color:var(--cyan);">Dec: --° --' --"</div>
                 </div>
 
                 <div class="grid grid-2" style="gap:8px;">
                     <div class="metric-box">
                         <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase;">Pixel Scale</div>
-                        <div id="resPixelScale" class="mono" style="font-size:13px; font-weight:700; color:var(--text-primary);">35.15 ″/px</div>
+                        <div id="resPixelScale" class="mono" style="font-size:12px; font-weight:700; color:var(--text-primary);">35.15 ″/px</div>
                     </div>
 
                     <div class="metric-box">
                         <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase;">Rotation</div>
-                        <div id="resRotation" class="mono" style="font-size:13px; font-weight:700; color:var(--text-primary);">0.00°</div>
+                        <div id="resRotation" class="mono" style="font-size:12px; font-weight:700; color:var(--text-primary);">0.00°</div>
                     </div>
 
                     <div class="metric-box">
                         <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase;">Matched Stars</div>
-                        <div id="resStarCount" class="mono" style="font-size:13px; font-weight:700; color:var(--green);">0 stars</div>
+                        <div id="resStarCount" class="mono" style="font-size:12px; font-weight:700; color:var(--green);">0 stars</div>
                     </div>
 
                     <div class="metric-box">
                         <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase;">Solve Time</div>
-                        <div id="resSolveTime" class="mono" style="font-size:13px; font-weight:700; color:var(--purple);">0.00 s</div>
+                        <div id="resSolveTime" class="mono" style="font-size:12px; font-weight:700; color:var(--purple);">0.00 s</div>
                     </div>
                 </div>
 
                 <div style="padding:10px; background:rgba(239,68,68,0.06); border:1px solid rgba(239,68,68,0.2); border-radius:6px; font-size:12px;">
-                    <div style="font-weight:600; color:var(--red); font-size:11px; text-transform:uppercase; margin-bottom:4px;">Position Alignment Offset</div>
+                    <div style="font-weight:600; color:var(--red); font-size:10px; text-transform:uppercase; margin-bottom:4px;">Position Alignment Offset</div>
                     <div style="display:flex; justify-content:space-between;">
                         <span style="color:var(--text-muted);">RA Error:</span>
                         <span id="resErrorRA" class="mono" style="color:var(--red);">-0.450'</span>
@@ -306,7 +328,11 @@
                     </div>
                 </div>
 
-                <div style="display:flex; flex-direction:column; gap:8px; margin-top:6px;">
+                <div style="font-size:11px; color:var(--green); display:flex; align-items:center; gap:6px; background:var(--green-dim); padding:6px 10px; border-radius:4px;">
+                    <i class="fas fa-bolt"></i> Real-time Telemetry: Coordinates JSON only (0 image payload)
+                </div>
+
+                <div style="display:flex; flex-direction:column; gap:8px; margin-top:4px;">
                     <button onclick="executeSolve()" class="btn btn-primary" style="width:100%; justify-content:center;">
                         <i class="fas fa-crosshairs"></i> Solve & Align Field
                     </button>
@@ -317,6 +343,8 @@
             </div>
         </div>
         -->
+
+
     </div>
 </div>
 
@@ -485,6 +513,74 @@
 
         ctx.restore(); // Restore clip
         ctx.restore(); // Restore camera transform
+
+        // 9. VIEWPORT RA & DEC AXIS TICKS (Rendered in screen space for maximum clarity)
+        const axisColor = 'rgba(0, 191, 165, 0.7)';
+        ctx.fillStyle = '#64748b';
+        ctx.font = '10px monospace';
+
+        // X-Axis (RA in degrees)
+        for (let offset = -10; offset <= 10; offset += 5) {
+            let tickX = centerX + (offset / (FOV_DEG / 2)) * r_circle;
+            let valRA = (center_ra_deg + offset).toFixed(1) + '°';
+            
+            ctx.strokeStyle = axisColor;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(tickX, h - 18); ctx.lineTo(tickX, h - 10);
+            ctx.stroke();
+
+            ctx.textAlign = 'center';
+            ctx.fillText(valRA, tickX, h - 2);
+        }
+
+        // Y-Axis (Dec in degrees)
+        for (let offset = -10; offset <= 10; offset += 5) {
+            let tickY = centerY - (offset / (FOV_DEG / 2)) * r_circle;
+            let valDec = (center_dec_deg + offset).toFixed(1) + '°';
+            
+            ctx.strokeStyle = axisColor;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(10, tickY); ctx.lineTo(18, tickY);
+            ctx.stroke();
+
+            ctx.textAlign = 'left';
+            ctx.fillText(valDec, 22, tickY + 3);
+        }
+
+        // 10. DYNAMIC MOUSE CURSOR CROSSHAIR & FLOATING RA/DEC AXIS TOOLTIP
+        if (currentHoverPos) {
+            const { mx, my, ra_deg, dec_deg } = currentHoverPos;
+
+            // Live Crosshair lines
+            ctx.strokeStyle = 'rgba(245, 158, 11, 0.65)';
+            ctx.setLineDash([4, 4]);
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(mx, 0); ctx.lineTo(mx, h);
+            ctx.moveTo(0, my); ctx.lineTo(w, my);
+            ctx.stroke();
+            ctx.setLineDash([]); // Reset line dash
+
+            // Floating RA / DEC Cursor Tooltip Box
+            const labelText = `RA: ${ra_deg.toFixed(3)}°, Dec: ${dec_deg >= 0 ? '+' : ''}${dec_deg.toFixed(3)}°`;
+            ctx.font = 'bold 11px monospace';
+            const textWidth = ctx.measureText(labelText).width;
+            
+            let boxX = Math.min(mx + 12, w - textWidth - 16);
+            let boxY = Math.max(my - 24, 16);
+
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+            ctx.strokeStyle = '#f59e0b';
+            ctx.lineWidth = 1;
+            ctx.fillRect(boxX - 4, boxY - 14, textWidth + 8, 18);
+            ctx.strokeRect(boxX - 4, boxY - 14, textWidth + 8, 18);
+
+            ctx.fillStyle = '#f59e0b';
+            ctx.textAlign = 'left';
+            ctx.fillText(labelText, boxX, boxY);
+        }
     }
 
     function loadFieldData() {
@@ -663,6 +759,13 @@
         return { imgX, imgY, fieldRA_rad, fieldDec_rad };
     }
 
+    let currentHoverPos = null;
+
+    canvas.addEventListener('mouseleave', function() {
+        currentHoverPos = null;
+        drawField();
+    });
+
     // Mouse Drag for Pan & Mouse Motion Readout matching canvas_ImageMouseMotion in PlateSolver.py line 151-161
     canvas.addEventListener('mousedown', function (e) {
         if (e.button === 0) { // Left click
@@ -692,7 +795,6 @@
         if (camera.isDragging) {
             camera.panX = e.clientX - camera.dragStartX;
             camera.panY = e.clientY - camera.dragStartY;
-            drawField();
         }
 
         const { imgX, imgY, fieldRA_rad, fieldDec_rad } = canvasPosToImageAndField(mx, my);
@@ -701,6 +803,8 @@
             canvas.style.cursor = 'crosshair';
             const mouse_ra_deg = fieldRA_rad * (180.0 / Math.PI);
             const mouse_dec_deg = fieldDec_rad * (180.0 / Math.PI);
+
+            currentHoverPos = { mx, my, ra_deg: mouse_ra_deg, dec_deg: mouse_dec_deg, fieldRA_rad, fieldDec_rad, imgX, imgY };
 
             // Find intensity value at pixel (0 if background, intensity if near star)
             let adcVal = 0;
@@ -718,18 +822,19 @@
             }
 
             // Exact string format matching PlateSolver.py lines 155-158:
-            // f"RA: {np.rad2deg(fieldCoord[0]):6.3f}°, Dec: {np.rad2deg(fieldCoord[1]):6.3f}°\t|RA: {fieldCoord[0]:6.5f}, Dec: {fieldCoord[1]:6.5f}"
-            // f"X: {imageCoord[0]}, Y: {imageCoord[1]} = [{self.img_data[imageCoord[0], imageCoord[1]]:7.2f}]"
             let elMouseDec = document.getElementById('staticText_MouseRADec');
             if (elMouseDec) {
-                elMouseDec.textContent = `RA: ${mouse_ra_deg.toFixed(3)}°, Dec: ${mouse_dec_deg.toFixed(3)}°\t|RA: ${fieldRA_rad.toFixed(5)}, Dec: ${fieldDec_rad.toFixed(5)}`;
+                elMouseDec.textContent = `RA: ${mouse_ra_deg.toFixed(3)}°, Dec: ${mouse_dec_deg >= 0 ? '+' : ''}${mouse_dec_deg.toFixed(3)}° \t| RA: ${fieldRA_rad.toFixed(5)}, Dec: ${fieldDec_rad.toFixed(5)} rad`;
             }
             document.getElementById('staticText_MouseImageCoord').textContent =
                 `X: ${imgX}, Y: ${imgY} = [${adcVal.toFixed(2)}]`;
         } else {
             canvas.style.cursor = 'default';
+            currentHoverPos = null;
         }
+        drawField();
     });
+
 
     // Canvas Mouse Release Star Selection matching canvas_ImageMouseRelease in PlateSolver.py line 163-182
     canvas.addEventListener('click', function (e) {

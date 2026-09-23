@@ -89,3 +89,47 @@ class TelescopeLog(models.Model):
 
     def __str__(self):
         return f"[{self.timestamp.strftime('%Y-%m-%d %H:%M')}] {self.telescope.code}: {self.get_event_type_display()}"
+
+
+class TelescopeDiscussion(models.Model):
+    CATEGORY_CHOICES = [
+        ('general', 'General Observatory Chat'),
+        ('observation', 'Observation Logs & Targets'),
+        ('hardware', 'Hardware & Mount Operations'),
+        ('optics', 'Optics & Focusing'),
+        ('software', 'Software & Plate Solving'),
+        ('maintenance', 'Maintenance Notes'),
+    ]
+
+    telescope = models.ForeignKey(Telescope, on_delete=models.CASCADE, related_name="discussions", help_text="Separate telescope for this discussion thread")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="telescope_discussions")
+    title = models.CharField(max_length=200)
+    content = models.TextField()
+    category = models.CharField(max_length=30, choices=CATEGORY_CHOICES, default='general')
+    is_pinned = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Telescope Discussion"
+        verbose_name_plural = "Telescope Discussions"
+        ordering = ["-is_pinned", "-created_at"]
+
+    def __str__(self):
+        return f"[{self.telescope.code}] {self.title}"
+
+
+class TelescopeDiscussionReply(models.Model):
+    discussion = models.ForeignKey(TelescopeDiscussion, on_delete=models.CASCADE, related_name="replies")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="telescope_discussion_replies")
+    message = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Telescope Discussion Reply"
+        verbose_name_plural = "Telescope Discussion Replies"
+        ordering = ["created_at"]
+
+    def __str__(self):
+        return f"Reply by @{self.user.username} on '{self.discussion.title}'"
+
